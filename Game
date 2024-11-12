@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flappy Bird Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div class="score">Score: <span id="score">0</span></div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
+body, html {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-family: Arial, sans-serif;
+  background-color: #87CEEB; /* Light sky color */
+}
+
+.game-container {
+  position: relative;
+  width: 400px;
+  height: 600px;
+}
+
+canvas {
+  border: 2px solid #333;
+  background: linear-gradient(to bottom, #87CEEB, #1E90FF); /* Sky gradient */
+}
+
+.score {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 24px;
+  color: #fff;
+}
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+canvas.width = 400;
+canvas.height = 600;
+
+// Game Variables
+let bird = { x: 50, y: 150, width: 20, height: 20, dy: 0 };
+let gravity = 0.5;
+let isGameOver = false;
+let buildings = [];
+let gap = 150;
+let score = 0;
+
+// City Background
+let cityBackground = [];
+let citySpeed = 0.5; // Slower scroll for background depth
+let groundHeight = 50;
+
+// Create initial buildings for background
+function initCityBackground() {
+  for (let i = 0; i < 6; i++) {
+    const height = Math.random() * 100 + 150;
+    cityBackground.push({
+      x: i * 100,
+      y: canvas.height - height - groundHeight,
+      width: 70,
+      height: height,
+    });
+  }
+}
+
+// Update background buildings
+function updateCityBackground() {
+  cityBackground.forEach((building) => {
+    building.x -= citySpeed;
+    if (building.x + building.width < 0) {
+      building.x = canvas.width;
+      building.height = Math.random() * 100 + 150;
+    }
+  });
+}
+
+// Control Bird
+document.addEventListener("keydown", () => { bird.dy = -8; });
+document.addEventListener("click", () => { bird.dy = -8; });
+
+// Create Buildings (Obstacles)
+function generateBuilding() {
+  const height = Math.floor(Math.random() * (canvas.height - gap - 100)) + 50;
+  buildings.push({
+    x: canvas.width,
+    y: height,
+    width: 50,
+    height: height,
+    gap: gap,
+  });
+}
+
+// Check for Collisions
+function checkCollision(building) {
+  if (
+    bird.x < building.x + building.width &&
+    bird.x + bird.width > building.x &&
+    (bird.y < building.y || bird.y + bird.height > building.y + building.gap)
+  ) {
+    isGameOver = true;
+  }
+  if (bird.y + bird.height >= canvas.height - groundHeight) {
+    isGameOver = true;
+  }
+}
+
+// Update Game Elements
+function updateGame() {
+  if (isGameOver) return;
+
+  // Gravity
+  bird.dy += gravity;
+  bird.y += bird.dy;
+
+  // Update Buildings
+  buildings.forEach((building, index) => {
+    building.x -= 2;
+    if (building.x + building.width < 0) {
+      buildings.splice(index, 1);
+      score++;
+      document.getElementById("score").innerText = score;
+    }
+    checkCollision(building);
+  });
+
+  // Generate New Buildings
+  if (buildings.length === 0 || buildings[buildings.length - 1].x < canvas.width - 200) {
+    generateBuilding();
+  }
+
+  // Update City Background
+  updateCityBackground();
+
+  // Draw Everything
+  drawGame();
+  requestAnimationFrame(updateGame);
+}
+
+// Draw Game Elements
+function drawGame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw Sky Background
+  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#87CEEB"); // Light Sky Blue
+  gradient.addColorStop(1, "#1E90FF"); // Deeper Sky Blue
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw City Background Buildings
+  ctx.fillStyle = "#708090"; // Slate gray color for background buildings
+  cityBackground.forEach((building) => {
+    ctx.fillRect(building.x, building.y, building.width, building.height);
+  });
+
+  // Draw Ground
+  ctx.fillStyle = "#654321"; // Brown for ground
+  ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+
+  // Draw Bird
+  ctx.fillStyle = "yellow";
+  ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+
+  // Draw Foreground Buildings (Obstacles)
+  ctx.fillStyle = "green";
+  buildings.forEach((building) => {
+    ctx.fillRect(building.x, 0, building.width, building.height);
+    ctx.fillRect(building.x, building.height + building.gap, building.width, canvas.height - building.height - building.gap - groundHeight);
+  });
+
+  // Game Over Screen
+  if (isGameOver) {
+    ctx.fillStyle = "red";
+    ctx.font = "30px Arial";
+    ctx.fillText("Game Over", canvas.width / 2 - 70, canvas.height / 2);
+  }
+}
+
+// Initialize City Background and Start the Game
+initCityBackground();
+updateGame();
